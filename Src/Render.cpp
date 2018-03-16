@@ -25,7 +25,7 @@ TCHAR* g_WindowName = L"CoJang & Yena Collaboration";
 //
 //  전역 데이터들.
 //  
-
+COLOR g_clearColor(0, 0.25f, 0.3f, 1); //배경색
   
 
 /////////////////////////////////////////////////////////////////////////////
@@ -58,32 +58,43 @@ void DataRelease()
 //
 void ShowInfo()
 { 
-	//프레임수 표시.
-	PutFPS(1, 1); 
+	PutFPS(0, 0);
+
+	static bool bShow = true;
+	if (IsKeyUp(VK_F1)) bShow ^= true;
+
+	if (!bShow)
+	{
+		//ynTextDraw(1,20, COLOR(1, 1, 0, 1), "[Help] F1"); 
+		return;
+	}
 
 
-	//도움말 출력.
-	int x = 100;
-	int y = 100;
-	HDC hdc = GetDC(g_hWnd);
-	TCHAR* msg = L"";
-	COLORREF col = RGB(0, 0, 0);	
-	COLORREF col2 = RGB(255, 0, 255);	
-	
-	ynTextDraw(x, y += 20, col, g_WindowName);	
-	ynTextDraw(x, y += 20, col2, L"DirectX 설정 및 기본프레임워크 구성 실습.");
-	ynTextDraw(x, y += 20, col2, L"1. 기반프레임웍크 구축");
-	ynTextDraw(x, y += 20, col2, L"2. DirectX Setup");
-	ynTextDraw(x, y += 20, col2, L"3. DX SwapChain (Double Buffering)");
-	ynTextDraw(x, y += 20, col2, L"4. DX Font System (DXTK)");
-	y += 20;
-	ynTextDraw(x, y += 20, col2, L"배포된 예제를 참고하여 DirectX 설정을 완료하십시오.");
-	y += 20;
-	//ynTextDraw(x, y += 20, col, L"DX 를 사용하기 위한 3D 렌더링 기본 프레임워크 입니다.");
-	ynTextDraw(x, y += 20, col, L"기본 프레임워크를 기반으로 단계별 튜토리얼을 진행할 것입니다.");
-	ynTextDraw(x, y += 20, col, L"Idle Time 에 맞추어 출력중으로 메세지가 깜빡거립니다.");
-	ynTextDraw(x, y += 20, col, L"더블버퍼링(Double Buffering)이으로 깜빡거림(Flickering)을 해결 할 수 있습니다.");
-	ynTextDraw(x, y += 20, col, L"초당 렌더링 프레임수(FPS) 출력 중. (좌측상단)");
+	// Today's Topic.
+	{
+		int x = 300, y = 50;
+		COLOR col(1, 1, 1, 1);
+		COLOR col2(1, 1, 0, 1);
+		ynTextDraw(x, y, col, L"■ %s", g_WindowName);
+
+		y += 24;
+		WCHAR* msg =
+			L"1.기본프레임워크 구축.\n"
+			L"2.HW 렌더링 디바이스(D3D Device) 를 생성.\n"
+			L"3.Idle 시간 렌더링.\n"
+			L"4.스왑체인 Swap(Flipping) chain 의 이해 \n";
+		ynTextDraw(x, y, col, msg);
+	}
+
+
+	int x = 300, y = 300;
+	static int cnt = 0;
+	COLOR col(1, 1, 0, 1);
+	ynTextDraw(x, y, col, L"Hello, Device!!    cnt=%08d", ++cnt);
+
+	y += 14;
+	y += 14;
+	ynTextDraw(x, y, col, L"* HW Rendering Device (%s) 버전 *", g_strFeatureLevel);
 
 }
 
@@ -113,6 +124,8 @@ void SceneRender()
 	//-------------------------------
 	// 장면 그리기 시작.. 
 	//-------------------------------
+	//렌더타겟 (백버퍼) 지우기
+	ClearBackBuffer(g_clearColor);
 
 	//개체 렌더링 : 주인공, 몬스터, 지형.. 
 	//...
@@ -125,7 +138,7 @@ void SceneRender()
 	// 장면 그리기 종료.
 	//------------------------------- 
 	//...
-
+	Flip();
 
 
 }//end of void SceneRender()

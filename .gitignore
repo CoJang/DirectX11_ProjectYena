@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# CoJang Added Ignor List
+*.db
+*.ipch
+*.idb
+*.tlog
+*.lastbuildstate
+*.opendb

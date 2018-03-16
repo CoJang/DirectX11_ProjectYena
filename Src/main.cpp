@@ -154,7 +154,7 @@ BOOL InitWindow(int width, int height)
 	
 	
 	//클라이언트 영역 크기 재조정 : 필수. 삭제금지
-	//ResizeWindow(hWnd, width, height);
+	ResizeWindow(hWnd, width, height);
 
 	//마우스 커서 : 기본화살표로 설정.
 	SetCursor(LoadCursor(NULL, IDC_ARROW));
