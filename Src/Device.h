@@ -43,14 +43,28 @@ using namespace DirectX;
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// DirectX Toolkit : DX 확장 라이브러리 ★
+// DirectX Toolkit : DX 확장 라이브러리  --> Yena 에 포함됨.
 //
 ///////////////////////////////////////////////////////////////////////////////
 // DX 확장 라이브러리 및 유틸리티 모음집.
 // DX 사용시 필요한 여러 기능 클래스 및 부가 서비스를 제공합니다.
 // DirectXTK 를 보다 편하게 사용하기 위해서 Project 속성 추가가 필요합니다.
 // DirectXTK.h 또는  Yena/DXTK/Readme.txt 을 참조하세요.  
-#include "DirectXTK.h"
+//#include "DirectXTK.h"
+
+
+
+////////////////////////////////////////////////////////////////////////////
+//
+// Yena : 예나 사용.
+//
+////////////////////////////////////////////////////////////////////////////
+// 게임 개발에 필요한 기본 장치 및 확장 기능을 제공.
+// 프레임워크,폰트,수학,카메라,조명,셰이더,상태 객체 등등..
+// 자세한 것은 Yena 설명서.txt 참조.
+//
+#include "Yena.h"			// Yena 메인 헤더.
+
 
 
 
@@ -64,6 +78,7 @@ typedef ID3D11Device*			LPDEVICE;
 typedef ID3D11DeviceContext*	LPDXDC;
 typedef IDXGISwapChain*			LPSWAPCHAIN;
 typedef ID3D11RenderTargetView*	LPRTVIEW;
+typedef ID3D11DepthStencilView*	LPDSVIEW;
 
 /*
 // DirectX Math 타입 재정의 : 호환성 향상
@@ -100,7 +115,7 @@ typedef XMFLOAT4		COLOR;		// r, g, b, a.  [실수형 0~1.0]
 int		DXSetup(HWND hwnd);
 void	DXRelease();
 
-int		ClearBackBuffer(COLOR col);
+int		ClearBackBuffer(UINT flag, COLOR col, float depth = 1.0f, UINT stencil = 0);
 int     Flip();
 
 float	GetEngineTime();
@@ -108,6 +123,7 @@ void	PutFPS(int x, int y);
 //void  ynTextDraw( int x, int y, COLOR col, char* msg, ...);
 
 void	GetDeviceInfo();
+HRESULT GetAdapterInfo(DXGI_ADAPTER_DESC1* pAd);
 void	SystemUpdate(float dTime);
 void	SystemInfo(int x, int y, COLOR col);
 
@@ -119,6 +135,8 @@ extern ID3D11Device*           g_pDevice;
 extern ID3D11DeviceContext*	   g_pDXDC;
 extern IDXGISwapChain*         g_pSwapChain;
 extern ID3D11RenderTargetView* g_pRTView;
+extern ID3D11DepthStencilView* g_pDSView;
+
 
 
 // 장치 설정 정보 구조체. (DX9/11 구형 호환성 유지용)
@@ -137,6 +155,28 @@ extern BOOL g_bVSync;
 
 //현재 디바이스 DX 기능 레벨.
 extern TCHAR* g_strFeatureLevel;
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// 렌더링 상태 객체 관련  
+//
+///////////////////////////////////////////////////////////////////////////////
+
+//깊이/스텐실 상태 정의.
+enum {
+	DS_DEPTH_ON,		//깊이버퍼 ON! (기본값)
+	DS_DEPTH_OFF,		//깊이버퍼 OFF!
+	DS_DEPTH_WRITE_OFF,	//깊이버퍼 쓰기 끄기.
+
+	DS_MAX_,
+};
+
+//깊이/스텐실 상태 객체들 : 엔진 전체 공유함.
+extern ID3D11DepthStencilState* g_DSState[DS_MAX_];
+
 
 
 
@@ -164,6 +204,7 @@ extern TCHAR* g_strFeatureLevel;
 #define NO_  FALSE
 #endif
 
+/* Yena 에 포함됨
 #ifndef YN_OK
 #define YN_OK	   0					//에러 없음. 특별한 문제 없음.
 #define YN_FAIL   -1					//에러 발생.
@@ -172,6 +213,7 @@ extern TCHAR* g_strFeatureLevel;
 
 // 색상 * 스칼라 곱  (ex)  col = col * 0.5f
 COLOR operator * (COLOR& lhs, float s);
+*/
 
 
 
@@ -182,17 +224,20 @@ COLOR operator * (COLOR& lhs, float s);
 ///////////////////////////////////////////////////////////////////////////////
 
 //int ynError(BOOL bBox, TCHAR* msg, ...);
+int ynErrorW(BOOL bMBox, TCHAR* msg, HRESULT hr, ID3DBlob* pBlob, TCHAR* filename, char* EntryPoint, char* ShaderModel);
+int ynErrorW(BOOL bMBox, TCHAR* msg, HRESULT hr, ID3DBlob* pBlob);
 int ynErrorW(TCHAR* file, UINT line, TCHAR* func, BOOL bMBox, HRESULT hr, TCHAR* msg, ...);
 
 #define ynError(hr, msg, ...)  \
 ynErrorW( __FILEW__, __LINE__, __FUNCTIONW__, TRUE, hr, msg, __VA_ARGS__ )
 
+//#define ynError(hr, msg, pBlob)  ynErrorW( TRUE, hr, msg, pBlob)
 
 
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// 폰트 엔진 : 일반 함수 버전.★
+// 폰트 엔진 : 일반 함수 버전. --> Yena 에 포함됨
 //
 // DirectXTK : SpriteFont 기반 폰트 출력 클래스
 // 2D Texture / Sprite 기반의 폰트 출력 라이브러리.
@@ -203,11 +248,11 @@ ynErrorW( __FILEW__, __LINE__, __FUNCTIONW__, TRUE, hr, msg, __VA_ARGS__ )
 // 자세한 것은 DirectXTK.h 또는  Yena/DXTK/Readme.txt 을 참조. 
 //
 ///////////////////////////////////////////////////////////////////////////////
-
+/*
 int  ynFontCreate(LPDEVICE pDev);
 void ynFontRelease();
 void ynTextDraw(int x, int y, COLOR col, TCHAR* msg, ...);
-
+*/
 
 
 /**************** end of "Device.h" ***********************************/

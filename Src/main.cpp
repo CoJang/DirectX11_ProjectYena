@@ -8,10 +8,10 @@
 // 2016.12.27. Update. (DX11. Windows SDK 8.1)
 //
 #include "windows.h"
-#include "Device.h"		//DX 관련 헤더.★
+#include "Device.h"		//DX 관련 헤더.
 #include "Render.h"		//렌더링 관련 코드들..
-   
- 
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // 전역 변수들.
@@ -31,7 +31,7 @@ BOOL MessagePump();
 // 메세지 처리 프로시져.
 LRESULT CALLBACK MsgProc(HWND, UINT, WPARAM, LPARAM);
 
- 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // WinMain : 메인 함수.
@@ -41,36 +41,36 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 					 LPSTR     lpCmdLine,
 					 int       nCmdShow)
 {
- 
+
 	//------------------------------------------------------------------//
 	// 기본 윈도우 프레임 생성..  								    	//
 	//------------------------------------------------------------------//
-	if (!InitWindow(800, 600)) return 0;
-	 
-	
+	if (!InitWindow(g_Mode.Width, g_Mode.Height)) return 0;
+
+
 	//------------------------------------------------------------------//
 	// DX 초기화...실패하면 어플리케이션을 종료합니다.					//
 	//------------------------------------------------------------------//
-	if (FAILED(DXSetup(g_hWnd)))	//★
+	if (FAILED(DXSetup(g_hWnd)))
 		return 0;
 
 
 	//------------------------------------------------------------------//
 	// 데이터 로딩														//
 	//------------------------------------------------------------------//
-	if(!DataLoading())
+	if (!DataLoading())
 	{
-		g_bLoop = FALSE;  
+		g_bLoop = FALSE;
 	}
- 
+
 	//------------------------------------------------------------------//
 	// 메인  루프														//
 	//------------------------------------------------------------------//
-	while(g_bLoop) 
+	while (g_bLoop)
 	{
-		if(!MessagePump())		// 메세지 펌프.
+		if (!MessagePump())		// 메세지 펌프.
 			break;
- 
+
 		SceneRender();			//렌더링.	 
 	}
 
@@ -78,14 +78,14 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	// 어플리케이션 종료													// 
 	//------------------------------------------------------------------//
 	DataRelease();				//데이터 제거.
-	DXRelease();				//DX 및 관련 객체 제거.★
+	DXRelease();				//DX 및 관련 객체 제거.
 
 	return 0;
 }
 
 
 
- 
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -93,19 +93,19 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 // 
 LRESULT CALLBACK MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch(msg)
-	{ 
+	switch (msg)
+	{
 	case WM_KEYDOWN:
-		switch(wParam)
+		switch (wParam)
 		{
- 		case VK_ESCAPE:
+		case VK_ESCAPE:
 			SendMessage(hwnd, WM_DESTROY, 0, 0);
 			break;
 		}
 		return 0;
 
 	case WM_DESTROY:
-		PostQuitMessage(0); 
+		PostQuitMessage(0);
 		return 0;
 	}
 
@@ -126,33 +126,33 @@ LRESULT CALLBACK MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //
 BOOL InitWindow(int width, int height)
 {
-	WNDCLASSEX wc = { 
+	WNDCLASSEX wc = {
 		sizeof(WNDCLASSEX), CS_CLASSDC, MsgProc, 0, 0,
 			::GetModuleHandle(NULL), NULL, NULL, NULL, NULL,
-			g_ClassName, NULL 
+			g_ClassName, NULL
 	};
 
 	RegisterClassEx(&wc);
- 
+
 	//윈도우 생성.
-	HWND hWnd = ::CreateWindow( g_ClassName, g_WindowName, 
+	HWND hWnd = ::CreateWindow(g_ClassName, g_WindowName,
 								WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 								//WS_OVERLAPPEDWINDOW, 
-								0, 0, 
-								width, height, 
-								GetDesktopWindow(), NULL, 
+								0, 0,
+								width, height,
+								GetDesktopWindow(), NULL,
 								wc.hInstance, NULL
 								);
-	if(hWnd == NULL) return FALSE; 
-	
+	if (hWnd == NULL) return FALSE;
+
 
 	::ShowWindow(hWnd, SW_SHOWDEFAULT);
 	::UpdateWindow(hWnd);
 
 	//윈도우 핸들 전역변수 복사.
 	g_hWnd = hWnd;
-	
-	
+
+
 	//클라이언트 영역 크기 재조정 : 필수. 삭제금지
 	ResizeWindow(hWnd, width, height);
 
@@ -175,13 +175,13 @@ int MessagePump()
 {
 	MSG msg;	::ZeroMemory(&msg, sizeof(msg));
 
-	while(1)
+	while (1)
 	{
 		//메세지 큐에 메세지가 있으면...처리하고..
-		if(::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
 		{
-			if(msg.message == WM_QUIT)			//윈도우 종료를 위해 리턴.
-				return FALSE;		
+			if (msg.message == WM_QUIT)			//윈도우 종료를 위해 리턴.
+				return FALSE;
 
 			//나머지 메세지 처리.
 			::TranslateMessage(&msg);
@@ -189,7 +189,7 @@ int MessagePump()
 		}
 		else  //특별한 메세지가 없다면 리턴후 게임(렌더링)을 진행합니다..
 		{
-			return TRUE;		
+			return TRUE;
 		}
 	}
 
@@ -215,10 +215,10 @@ int MessagePump()
 // 2004.05.28. 버전업.
 //
 void ResizeWindow(HWND hWnd, UINT width, UINT height)
-{	
+{
 	//현재 윈도우의 스타일 구하기.
 	RECT oldrc;
-	DWORD sytle  = (DWORD) ::GetWindowLong(hWnd, GWL_STYLE);
+	DWORD sytle = (DWORD) ::GetWindowLong(hWnd, GWL_STYLE);
 	DWORD exstyle = (DWORD) ::GetWindowLong(hWnd, GWL_EXSTYLE);
 
 	//현재 윈도우 '전체' 크기 (스크린좌표) 를 얻는다.
@@ -226,7 +226,7 @@ void ResizeWindow(HWND hWnd, UINT width, UINT height)
 
 	//새로 생성될 윈도우의 '클라이언트' 영역 크기 계산하기.
 	RECT newrc;
-	newrc.left = 0;  
+	newrc.left = 0;
 	newrc.top = 0;
 	newrc.right = width;
 	newrc.bottom = height;
@@ -244,9 +244,9 @@ void ResizeWindow(HWND hWnd, UINT width, UINT height)
 
 
 	//새로운 크기를 윈도우에 설정합니다.
-	::SetWindowPos(hWnd, HWND_NOTOPMOST, 
-					oldrc.left, oldrc.top, 
- 					newWidth, newHeight, SWP_SHOWWINDOW);
+	::SetWindowPos(hWnd, HWND_NOTOPMOST,
+					oldrc.left, oldrc.top,
+					newWidth, newHeight, SWP_SHOWWINDOW);
 
 }
 

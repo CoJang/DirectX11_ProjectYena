@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Src\Render.cpp" />
+    <ClCompile Include="Src\Device.cpp">
+      <Filter>Basic_Frame_Works</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\main.cpp">
+      <Filter>Basic_Frame_Works</Filter>
+    </ClCompile>
+    <ClCompile Include="Src\Shader.cpp">
+      <Filter>Shader</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Src\Render.h" />
+    <ClInclude Include="Src\Device.h">
+      <Filter>Basic_Frame_Works</Filter>
+    </ClInclude>
+    <ClInclude Include="Src\Shader.h">
+      <Filter>Shader</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="작업내용.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{c2ce6498-aedf-425b-b0a1-f973a098a893}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\fx">
+      <UniqueIdentifier>{6c5cd598-d8cc-46c6-821c-3ce7e79be14d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Basic_Frame_Works">
+      <UniqueIdentifier>{2732c4e6-a82d-4f04-a07d-db4a53625b27}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="fx\Demo.fx">
+      <Filter>Shader\fx</Filter>
+    </FxCompile>
+  </ItemGroup>
+</Project>
