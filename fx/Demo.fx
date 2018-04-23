@@ -108,20 +108,21 @@ VSOutput VS_Main(
 float4 Light(float4 nrm)
 {      
 	float4 Color;
-	float4 N;
+	//float4 N;
 	
 	float LightIntensity;
 	
 	// 노말을 월드변환 하여준다.
-	N = mul(nrm, mTM);
-	//N = normalize(N);
+	//N = mul(nrm, mTM);
+	//N = normalize(nrm);
 	
 	//Color = (0, 0, 0, 0);
 	//Color = L_Ambient * M_Ambient;
 	Color = L_Ambient;
 
 
-	LightIntensity = saturate(dot(N, Direction));
+	//LightIntensity = saturate(dot(N, Direction));
+	LightIntensity = saturate(dot(nrm, Direction));
 
 	if (LightIntensity > 0.0f)
 	{

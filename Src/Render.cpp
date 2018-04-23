@@ -193,6 +193,8 @@ BOOL  g_bLightEnable = TRUE;	//조명 플래그. On/Off. ★
 
 cbLIGHT g_cbLit;				//조명 상수버퍼 갱신용. 
 
+XMMATRIX g_mRot;////////
+
 void LightsUpdate(float dTime);
 
 /////////////////////////////////////////////////////////////////////////////
@@ -319,10 +321,10 @@ int ObjLoad()
 
 	// 정접 입력구조 객체 생성 Create the input layout
 	hr = g_pDevice->CreateInputLayout(layout,
-		numElements,
-		g_pVSCode->GetBufferPointer(),
-		g_pVSCode->GetBufferSize(),
-		&g_pVBLayout
+										numElements,
+										g_pVSCode->GetBufferPointer(),
+										g_pVSCode->GetBufferSize(),
+										&g_pVBLayout
 	);
 	if (FAILED(hr))	return hr;
 
@@ -382,6 +384,7 @@ void ObjUpdate(float dTime)
 	if (bAutoRot) g_vRot.y += rot * 0.5f;
 	//g_vRot.y += XMConvertToRadians(90) * dTime;	//90º/sec 씩 회전.(DirectXMath 사용)	
 	XMMATRIX mRot = XMMatrixRotationRollPitchYaw(g_vRot.x, g_vRot.y, g_vRot.z);
+	g_mRot = mRot;
 	//XMMATRIX mRot = XMMatrixRotationY(g_vRot.y);
 
 
@@ -660,11 +663,18 @@ void LightsUpdate(float dTime)
 	// 상수버퍼 갱신.
 	//---------------- 
 	XMVECTOR dir = XMLoadFloat3(&g_Light.Direction);	//방향은 normalize 되어야 합니다.
-	g_cbLit.Direction = XMVector3Normalize(-dir);		//빛방향 주의.★
 	g_cbLit.Diffuse = XMLoadFloat4(&g_Light.Diffuse);
 	g_cbLit.Ambient = XMLoadFloat4(&g_Light.Ambient);
 	g_cbLit.Range = g_Light.Range;
 	g_cbLit.LitOn = g_bLightEnable;
+
+	XMMATRIX mInverseTranspose = g_cbDef.mTM;
+	mInverseTranspose = XMMatrixInverse(nullptr, mInverseTranspose);
+	//mInverseTranspose = XMMatrixTranspose(mInverseTranspose);
+
+	dir = XMVector4Transform(dir, mInverseTranspose);
+	g_cbLit.Direction = XMVector3Normalize(-dir);
+
 	UpdateDynamicConstantBuffer(g_pDXDC, g_pCBLit, &g_cbLit, sizeof(cbLIGHT));
 
 	//---------------- 
