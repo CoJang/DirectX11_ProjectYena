@@ -24,6 +24,7 @@ ID3DBlob* g_pVSCode = nullptr;
 ID3D11Buffer*	g_pCBDef = nullptr;		// 기본정보 운용 상수버퍼
 ID3D11Buffer*	g_pCBLit = nullptr;		// 조명용 상수버퍼
 ID3D11Buffer*	g_pCBMtrl = nullptr;	// 재질용 상수버퍼
+ID3D11Buffer*	g_pCBCam = nullptr;		// 카메라용 상수버퍼
 
 
 
@@ -97,6 +98,7 @@ void ShaderRelease()
 	SAFE_RELEASE(g_pCBDef);			//기본 상수버퍼 제거.
 	SAFE_RELEASE(g_pCBLit);			//조명 상수버퍼 제거.★
 	SAFE_RELEASE(g_pCBMtrl);		//재질 상수버퍼 제거.★
+	SAFE_RELEASE(g_pCBCam);			//카메라 상수버퍼 제거.★
 }
 
 ////////////////////////////////////////////////////////////////////////////// 

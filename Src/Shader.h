@@ -27,7 +27,6 @@ struct cbDEFAULT
 	XMMATRIX mView;		//"View" 변환 행렬
 	XMMATRIX mWV;		//"World * View" 변환 행렬
 	XMMATRIX mProj;		//"Projection" 변환 행렬
-
 };
 
 //조명 정보용 상수버퍼 구조체★
@@ -36,8 +35,10 @@ struct cbLIGHT
 	XMVECTOR Direction;		//빛의 방향.
 	XMVECTOR Diffuse;		//주 광량 : 확산광 Diffuse Light.
 	XMVECTOR Ambient;		//보조 광량 : 주변광 Ambient Light.
+	XMVECTOR Specular;
 	FLOAT    Range;			//빛 도달 거리.
 	BOOL	 LitOn;			//조명 적용여부.
+	BOOL	 SpecOn;		//반사광 적용여부.
 };
 
 //재질 정보용 상수버퍼 구조체★
@@ -45,6 +46,15 @@ struct cbMATERIAL
 {
 	XMVECTOR Diffuse;		//주 광량(확산광) 의 반사율(%) 
 	XMVECTOR Ambient;		//보조 광량(주변광) 의 반사율(%) 
+	XMVECTOR Specular;
+	FLOAT    Power;
+};
+
+//카메라 정보용 상수버퍼 구조체★
+struct cbCAMERA
+{
+	XMVECTOR Position;
+
 };
 
 
@@ -53,6 +63,7 @@ struct cbMATERIAL
 extern ID3D11Buffer*	g_pCBDef;		//★
 extern ID3D11Buffer*	g_pCBLit;		//★
 extern ID3D11Buffer*	g_pCBMtrl;		//★
+extern ID3D11Buffer*	g_pCBCam;		//★
 
 										//(정적) 상수 버퍼 생성.
 HRESULT CreateConstantBuffer(UINT size, ID3D11Buffer** ppCB);

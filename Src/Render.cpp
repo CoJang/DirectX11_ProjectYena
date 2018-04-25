@@ -18,7 +18,7 @@
 #include "Render.h"
 #include "Shader.h"
 
-TCHAR* g_WindowName = L"CoJang & Yena Collaboration Lambert Model";
+TCHAR* g_WindowName = L"CoJang & Yena Collaboration Blinn-Phong (Local)";
 
 
 
@@ -137,6 +137,7 @@ BOOL g_bCullBack = TRUE;		//뒷면 제거...On/Off.
 BOOL g_bWireFrame = FALSE;		//와이어 프레임 On/Off.
 BOOL g_bZEnable = TRUE;			//깊이 버퍼 연산 On/Off.
 BOOL g_bZWrite = TRUE;			//깊이버퍼 쓰기 On/Off.	
+BOOL g_bSpecular = TRUE;		//반사광 쓰기 On/Off.	
 
 
 // 
@@ -185,15 +186,15 @@ struct LIGHT
 	XMFLOAT3 Direction;		//빛의 방향.
 	COLOR    Diffuse;		//주 광량 : 확산광 Diffuse Light.
 	COLOR    Ambient;		//보조 광량 : 주변광 Ambient Light.
+	COLOR	 Specular;		//반사 광량 : 반사광 Specular Light.
 	FLOAT    Range;			//빛 도달 거리.
 };
 
 LIGHT g_Light;					//조명 정보.
 BOOL  g_bLightEnable = TRUE;	//조명 플래그. On/Off. ★
+BOOL  g_bSpecEnable = TRUE;	//조명 플래그. On/Off. ★
 
 cbLIGHT g_cbLit;				//조명 상수버퍼 갱신용. 
-
-XMMATRIX g_mRot;////////
 
 void LightsUpdate(float dTime);
 
@@ -206,25 +207,30 @@ void LightsUpdate(float dTime);
 // 실제 계산 역시 셰이더를 통해 여러분이 직접 처리해야 합니다.
 //
 
-//재질 구조체 : DX9 과 비슷하지만, 필요한 정보만 구성합니다.★
 struct MATERIAL
 {
 	COLOR    Diffuse;		//주 광량(확산광) 의 반사율(%) 
 	COLOR    Ambient;		//보조 광량(주변광) 의 반사율(%) 
+	COLOR	 Specular;		//반사 광량(반사광) 의 반사율(%)
+	FLOAT	 Power;			//반사할 빛의 세기
 };
 
-MATERIAL g_Mtrl;				//재질 정보.
+MATERIAL g_Mtrl;			//재질 정보.
+cbMATERIAL g_cbMtrl;		//재질 상수버퍼용 갱신용.
 
-cbMATERIAL g_cbMtrl;			//재질 상수버퍼용 갱신용.
+struct CAMERA
+{
+	XMFLOAT3 Position;		//카메라의 위치
+};
+
+CAMERA	g_Cam;
+cbCAMERA g_cbCam;			//카메라 상수버퍼 갱신용
 
 
 /////////////////////////////////////////////////////////////////////////////
-//
+//	데이터 로딩 / 생성
 int DataLoading()
 { 
-	// 데이터 로딩/생성 코드는 여기에...
-	// ...
-
 	//셰이더 로드.
 	ShaderLoad();
 
@@ -241,6 +247,11 @@ int DataLoading()
 	// 재질정보가 실시간으로 변하지 않는다면, 일반(정적) 상수버퍼로도 충분합니다.
 	ZeroMemory(&g_cbMtrl, sizeof(cbMATERIAL));
 	CreateDynamicConstantBuffer(sizeof(cbMATERIAL), &g_cbMtrl, &g_pCBMtrl);
+
+	// 카메라용 상수버퍼 생성.★
+	// 카메라정보가 실시간으로 변하지 않는다면, 일반(정적) 상수버퍼로도 충분합니다.
+	ZeroMemory(&g_cbCam, sizeof(cbCAMERA));
+	CreateDynamicConstantBuffer(sizeof(cbCAMERA), &g_cbCam, &g_pCBCam);
 
 
 
@@ -384,7 +395,6 @@ void ObjUpdate(float dTime)
 	if (bAutoRot) g_vRot.y += rot * 0.5f;
 	//g_vRot.y += XMConvertToRadians(90) * dTime;	//90º/sec 씩 회전.(DirectXMath 사용)	
 	XMMATRIX mRot = XMMatrixRotationRollPitchYaw(g_vRot.x, g_vRot.y, g_vRot.z);
-	g_mRot = mRot;
 	//XMMATRIX mRot = XMMatrixRotationY(g_vRot.y);
 
 
@@ -410,12 +420,17 @@ void ObjUpdate(float dTime)
 	//-----------------------
 	// 재질 정보 갱신.★
 	//-----------------------
-	g_Mtrl.Diffuse = COLOR(1, 1, 1, 1);
-	g_Mtrl.Ambient = COLOR(1, 1, 1, 1); //////
+	g_Mtrl.Diffuse = COLOR(1, 0, 0, 1);
+	g_Mtrl.Ambient = COLOR(1, 0, 0, 1); 
+	g_Mtrl.Specular = COLOR(1, 1, 1, 1);
+	g_Mtrl.Power = FLOAT(30.0f);
 
-										//재질 정보 상수버퍼 갱신.
+	//재질 정보 상수버퍼 갱신.
 	g_cbMtrl.Diffuse = XMLoadFloat4(&g_Mtrl.Diffuse);
 	g_cbMtrl.Ambient = XMLoadFloat4(&g_Mtrl.Ambient);
+	g_cbMtrl.Specular = XMLoadFloat4(&g_Mtrl.Specular);
+	g_cbMtrl.Power = g_Mtrl.Power;
+
 	//상수버퍼 갱신 : 재질정보가 실시간으로 변하지 않는다면, 일반(정적) 상수버퍼로도 충분합니다.
 	UpdateDynamicConstantBuffer(g_pDXDC, g_pCBMtrl, &g_cbMtrl, sizeof(cbMATERIAL));
 
@@ -447,11 +462,12 @@ void ObjDraw()
 	g_pDXDC->VSSetShader(g_pVS, nullptr, 0);
 	g_pDXDC->PSSetShader(g_pPS, nullptr, 0);
 	g_pDXDC->VSSetConstantBuffers(0, 1, &g_pCBDef);		//VS 에 상수 버퍼 설정.
-	g_pDXDC->VSSetConstantBuffers(1, 1, &g_pCBLit);		//VS 에 조명 정보 설정.★ 
-	g_pDXDC->VSSetConstantBuffers(2, 1, &g_pCBMtrl);	//VS 에 재질 정보 설정.★ 
+	g_pDXDC->PSSetConstantBuffers(1, 1, &g_pCBLit);		//VS 에 조명 정보 설정.★ 
+	g_pDXDC->PSSetConstantBuffers(2, 1, &g_pCBMtrl);	//VS 에 재질 정보 설정.★ 
+	g_pDXDC->PSSetConstantBuffers(3, 1, &g_pCBCam);		//VS 에 카메라 정보 설정.★ 
 
 
-														//그리기! Render a triangle 
+	//그리기! Render a triangle 
 	g_pDXDC->Draw(36, 0);
 
 
@@ -505,43 +521,46 @@ float g_fZfar = 100.0f;					//시야 최대 거리 (100m)
 //
 void CameraUpdate(float dTime)
 {
-
-	//주인공 주시 테스트
-	//g_vLookAt = g_vPos;	
-
-	/*//카메라, 주인공과 함께 움직이기.
-	XMFLOAT3 cpos(0, 2, -10);
-	g_vEye = g_vPos + cpos;			//카메라 위치 : 주인공 '현재 위치로 부터 일정거리 떨어짐.
-	g_vLookAt = g_vPos;				//카메라 시점 : 주인공 '현재' 위치.
-	*/
-
-
 	// 카메라 몸체의 "위치" 와 "방향" 정보 
-	XMVECTOR eye = XMLoadFloat3(&g_vEye);	//카메라 위치 
+	XMVECTOR eye = XMLoadFloat3(&g_vEye);		//카메라 위치 
 	XMVECTOR lookat = XMLoadFloat3(&g_vLookAt);	//바라보는 곳.위치.
-	XMVECTOR up = XMLoadFloat3(&g_vUp);		//카메라 상방 벡터.	
-											// 뷰 변환 행렬 생성 :  View Transform 
+	XMVECTOR up = XMLoadFloat3(&g_vUp);			//카메라 상방 벡터.	
+
+	// 뷰 변환 행렬 생성 :  View Transform 
 	XMMATRIX mView = XMMatrixLookAtLH(eye, lookat, up);
 
 
 	// 카메라 "렌즈" 및 "촬영 영역" 정보.   
 	g_fAspect = g_Mode.Width / (float)g_Mode.Height;	 //현재 해상도 기준 FOV 설정.
 
-														 // 원근 투영 변환 행렬 생성 : Projection Transform.
+	// 원근 투영 변환 행렬 생성 : Projection Transform.
 	XMMATRIX mProj = XMMatrixPerspectiveFovLH(g_fFov, g_fAspect, g_fZnear, g_fZfar);
-
 
 
 	//상수 버퍼에 행렬 설정.
 	g_cbDef.mView = mView;
 	g_cbDef.mProj = mProj;
 
+	XMMATRIX mInverse = g_cbDef.mTM;
+	mInverse = XMMatrixInverse(nullptr, mInverse);
+
+	// 로컬 변환된 카메라 좌표
+	g_cbCam.Position = XMVector4Transform(eye, mInverse);
+	//g_cbCam.Position = XMVector3Normalize(g_cbCam.Position);
+
+
+	//상수 버퍼 전달
+	UpdateDynamicConstantBuffer(g_pDXDC, g_pCBCam, &g_cbCam, sizeof(cbCAMERA));
+
+	//좌표 전달 : HUD용
+	XMStoreFloat3(&g_Cam.Position, g_cbCam.Position);
 
 	//Yena 로 카메라 정보를 전달 
 	//Yena 공통 객체들은 갱신시 카메라 정보가 필요합니다. 
 	//사용자 카메라를 사용한다면, 반드시 Yena 로 전달해야 합니다.
 	yn_View = mView;
 	yn_Proj = mProj;
+
 
 }
 
@@ -658,6 +677,8 @@ void LightsUpdate(float dTime)
 																//COLOR(0.1f, 0.1f, 0.1f, 1.0f);		//10% 회색 : 거의 검은색....
 																//COLOR(0.0f, 0.0f, 0.0f, 1.0f);		//100% 검은색....
 
+	g_Light.Specular = COLOR(1.0f, 1.0f, 1.0f, 1.0f);
+
 
 	//---------------- 
 	// 상수버퍼 갱신.
@@ -665,8 +686,10 @@ void LightsUpdate(float dTime)
 	XMVECTOR dir = XMLoadFloat3(&g_Light.Direction);	//방향은 normalize 되어야 합니다.
 	g_cbLit.Diffuse = XMLoadFloat4(&g_Light.Diffuse);
 	g_cbLit.Ambient = XMLoadFloat4(&g_Light.Ambient);
+	g_cbLit.Specular = XMLoadFloat4(&g_Light.Specular);
 	g_cbLit.Range = g_Light.Range;
 	g_cbLit.LitOn = g_bLightEnable;
+	g_cbLit.SpecOn = g_bSpecEnable;
 
 	XMMATRIX mInverseTranspose = g_cbDef.mTM;
 	mInverseTranspose = XMMatrixInverse(nullptr, mInverseTranspose);
@@ -699,10 +722,11 @@ float EngineUpdate()
 	//YenaUpdate(dTime);			// 예나 시스템 전체 일괄 갱신.
 
 
-									// 렌더링 옵션 조절 	 
+	// 렌더링 옵션 조절 	 
 	if (IsKeyUp(VK_SPACE))	g_bWireFrame ^= TRUE;
 	if (IsKeyUp(VK_F4))		g_bCullBack ^= TRUE;
 	if (IsKeyUp(VK_F5))		g_bLightEnable ^= TRUE;
+	if (IsKeyUp(VK_F6))		g_bSpecEnable ^= TRUE;
 	//if (IsKeyUp(VK_F5))		g_bZEnable ^= TRUE;		
 	//if (IsKeyUp(VK_F6))		g_bZWrite ^= TRUE;		
 
@@ -798,9 +822,9 @@ void ShowInfo()
 		ynTextDraw(x, y, col, L"■ %s", g_WindowName);
 
 		ynTextDraw(x, y += 14, col, L"> 조명 모델의 이해");
-		ynTextDraw(x, y += 14, col2, L"> 1.표준 확산광 모델 : Lambert Model");
-		ynTextDraw(x, y += 14, col3, L"> 2.표준 확산광 모델(로컬) : Lambert Model (Local)");
-		ynTextDraw(x, y += 14, col3, L"> 3.표준 정반사광 모델 : Blinn-Phong Model");
+		ynTextDraw(x, y += 14, col3, L"> 1.표준 확산광 모델(로컬) : Lambert Model (Local)");
+		ynTextDraw(x, y += 14, col3, L"> 2.표준 정반사광 모델 : Blinn-Phong Model");
+		ynTextDraw(x, y += 14, col2, L"> 3.표준 정반사광 모델(로컬) : Blinn-Phong Model (Local)");
 		//y = g_Mode.Height - 200;
 		//ynTextDraw(x, y += 14, col2, L" * 사용자 입력 처리 및 모델 변환 연습 * ");
 	}
@@ -813,14 +837,14 @@ void ShowInfo()
 	}
 
 	//추가 도움말..
-	int x = 1, y = 200;
+	int x = 1, y = 180;
 	COLOR col(1, 1, 1, 1);
 	COLOR col2(1, 1, 0, 1);
 	y += 14;
 	ynTextDraw(x, y += 14, col, L"Fill: Space (%s)", g_bWireFrame ? L"WIRE" : L"SOLID");
 	ynTextDraw(x, y += 14, col, L"Cull: F4 (%s)", g_bCullBack ? L"ON" : L"OFF");
 	ynTextDraw(x, y += 14, col2, L"Light: F5 (%s)", g_bLightEnable ? L"ON" : L"OFF");
-	//ynTextDraw(x, y += 14, col, L"깊이테스트: F5 (%s)", g_bZEnable?L"ON":L"OFF");
+	ynTextDraw(x, y += 14, col2, L"Specular: F6 (%s)", g_bSpecEnable? L"ON":L"OFF");
 	//ynTextDraw(x, y += 14, g_bZEnable?col:col*0.5f, L"깊이쓰기: F6 (%s)", g_bZWrite?L"ON":L"OFF");
 
 	//모델 정보 출력.
@@ -832,12 +856,13 @@ void ShowInfo()
 	ynTextDraw(x, y += 14, col, L"자동 : R");
 
 	//조명 정보 출력.
-	y += 50;
+	y += 25;
 	col = g_bLightEnable ? col2 : col*0.4f;
 	ynTextDraw(x, y += 14, col, L"[Light]");
 	ynTextDraw(x, y += 14, col, L"Dir = { %.2f, %.2f, %.2f }", g_Light.Direction.x, g_Light.Direction.y, g_Light.Direction.z);
 	ynTextDraw(x, y += 14, col, L"Diff = { %.2f, %.2f, %.2f, %.2f }", g_Light.Diffuse.x, g_Light.Diffuse.y, g_Light.Diffuse.z, g_Light.Diffuse.w);
 	ynTextDraw(x, y += 14, col, L"Amb = { %.2f, %.2f, %.2f, %.2f }", g_Light.Ambient.x, g_Light.Ambient.y, g_Light.Ambient.z, g_Light.Ambient.w);
+	ynTextDraw(x, y += 14, col, L"Spec = { %.2f, %.2f, %.2f, %.2f }", g_Light.Specular.x, g_Light.Specular.y, g_Light.Specular.z, g_Light.Specular.w);
 	//SIMD 타입을 사용하면 아래처럼 접근해야 함.★
 	//ynTextDraw(x, y += 14, col, L"Amb = { %.2f, %.2f, %.2f, %.2f }", XMVectorGetX(g_cbLit.Ambient), XMVectorGetY(g_cbLit.Ambient), XMVectorGetZ(g_cbLit.Ambient), XMVectorGetW(g_cbLit.Ambient));
 
@@ -846,6 +871,8 @@ void ShowInfo()
 	ynTextDraw(x, y += 14, col, L"[Material]");
 	ynTextDraw(x, y += 14, col, L"Diff = { %.2f, %.2f, %.2f, %.2f }", g_Mtrl.Diffuse.x, g_Mtrl.Diffuse.y, g_Mtrl.Diffuse.z, g_Mtrl.Diffuse.w);
 	ynTextDraw(x, y += 14, col, L"Amb = { %.2f, %.2f, %.2f, %.2f }", g_Mtrl.Ambient.x, g_Mtrl.Ambient.y, g_Mtrl.Ambient.z, g_Mtrl.Ambient.w);
+	ynTextDraw(x, y += 14, col, L"Spec = { %.2f, %.2f, %.2f, %.2f }", g_Mtrl.Specular.x, g_Mtrl.Specular.y, g_Mtrl.Specular.z, g_Mtrl.Specular.w);
+	ynTextDraw(x, y += 14, col, L"Power = { %.2f }", g_Mtrl.Power);
 
 
 
@@ -858,12 +885,13 @@ void ShowInfo()
 
 
 	//카메라 정보 출력.
-	x = 200;  y = g_Mode.Height - 14 * 5;
+	x = 200;  y = g_Mode.Height - 14 * 6;
 	//col = COLOR(1, 1, 0, 1)*0.8f;
 	ynTextDraw(x, y += 14, col, L"[카메라]");
 	ynTextDraw(x, y += 14, col, L"Eye={%.2f, %.2f, %.2f}", g_vEye.x, g_vEye.y, g_vEye.z);
 	ynTextDraw(x, y += 14, col, L"Look={%.2f, %.2f, %.2f}", g_vLookAt.x, g_vLookAt.y, g_vLookAt.z);
 	ynTextDraw(x, y += 14, col, L"Up={%.2f, %.2f, %.2f}", g_vUp.x, g_vUp.y, g_vUp.z);
+	ynTextDraw(x, y += 14, col, L"LocalPos={%.2f, %.2f, %.2f}", g_Cam.Position.x, g_Cam.Position.y, g_Cam.Position.z);
 
 	//카메라 - "렌즈" : 투영변환 정보 출력.
 	x = 400;  y = g_Mode.Height - 14 * 5;
